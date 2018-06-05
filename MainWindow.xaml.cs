@@ -6,85 +6,68 @@
 
 namespace Microsoft.Samples.Kinect.SkeletonBasics
 {
+
+    using System.Diagnostics;
     using System.IO;
     using System.Windows;
     using System.Windows.Media;
     using Microsoft.Kinect;
     using Matrix.Xmpp;
+    using matrixXmpp = Matrix.Xmpp;
     using Matrix.Xmpp.Client;
+    using System;
+    using System.Timers;
 
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
     public partial class MainWindow : Window
     {
-        /// <summary>
-        /// Width of output drawing
-        /// </summary>
+
         private const float RenderWidth = 640.0f;
 
-        /// <summary>
         /// Height of our output drawing
-        /// </summary>
         private const float RenderHeight = 480.0f;
 
-        /// <summary>
         /// Thickness of drawn joint lines
-        /// </summary>
         private const double JointThickness = 3;
 
-        /// <summary>
         /// Thickness of body center ellipse
-        /// </summary>
         private const double BodyCenterThickness = 10;
 
-        /// <summary>
         /// Thickness of clip edge rectangles
-        /// </summary>
         private const double ClipBoundsThickness = 10;
 
-        /// <summary>
         /// Brush used to draw skeleton center point
-        /// </summary>
         private readonly Brush centerPointBrush = Brushes.Blue;
 
-        /// <summary>
         /// Brush used for drawing joints that are currently tracked
-        /// </summary>
         private readonly Brush trackedJointBrush = new SolidColorBrush(Color.FromArgb(255, 68, 192, 68));
 
-        /// <summary>
-        /// Brush used for drawing joints that are currently inferred
-        /// </summary>        
+        /// Brush used for drawing joints that are currently inferred     
         private readonly Brush inferredJointBrush = Brushes.Yellow;
 
-        /// <summary>
         /// Pen used for drawing bones that are currently tracked
-        /// </summary>
         private readonly Pen trackedBonePen = new Pen(Brushes.Green, 6);
 
-        /// <summary>
-        /// Pen used for drawing bones that are currently inferred
-        /// </summary>        
+        /// Pen used for drawing bones that are currently inferred   
         private readonly Pen inferredBonePen = new Pen(Brushes.Gray, 1);
 
-        /// <summary>
         /// Active Kinect sensor
-        /// </summary>
         private KinectSensor sensor;
 
-        /// <summary>
         /// Drawing group for skeleton rendering output
-        /// </summary>
         private DrawingGroup drawingGroup;
 
-        /// <summary>
         /// Drawing image that we will display
-        /// </summary>
         private DrawingImage imageSource;
-        //------------------------------------------------------------------------------------------------------
-        //######################################################################################################
+
+        /// Library to conect XMPP server
         XmppClient xmppClient;
+
+        /// Counter for help auxiliar
+        private int contador = 0;
+
+        // Timer
+        System.Timers.Timer timer = new System.Timers.Timer();
+
         public MainWindow()
         {
             InitializeComponent();
@@ -130,29 +113,23 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             }
         }
 
-        /// <summary>
-        /// Execute startup tasks
-        /// </summary>
-        /// <param name="sender">object sending the event</param>
-        /// <param name="e">event arguments</param>
         private void WindowLoaded(object sender, RoutedEventArgs e)
         {
             xmppClient = new XmppClient{
-                // TODO, add your credentials here
+                // Ingresar credenciales de acceso aquí
                 XmppDomain = "xmpp.binarylamp.cl",
                 Username = "totem",
                 Password = "totem"
             };
 
-            xmppClient.OnRosterEnd += delegate {
-                xmppClient.Send(new Message {
-                    To = "marcelo@xmpp.binarylamp.cl",
-                    Type = MessageType.Chat,
-                    Body = "hola mundoooo!!!"
-                });
+            xmppClient.OnMessage += XmppClient_OnMessage;
 
-            };
             xmppClient.Open();
+
+            timer.Enabled = true;
+            timer.Interval = 1000;
+            timer.Elapsed += new System.Timers.ElapsedEventHandler(timerElapsedTime);
+
 
 
             // Create the drawing group we'll use for drawing
@@ -202,11 +179,45 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             }
         }
 
-        /// <summary>
-        /// Execute shutdown tasks
-        /// </summary>
-        /// <param name="sender">object sending the event</param>
-        /// <param name="e">event arguments</param>
+        private void timerElapsedTime(object sender, ElapsedEventArgs e)
+        {
+            Debug.WriteLine("Paso un segundo");
+        }
+
+        private void XmppClient_OnMessage(object sender, MessageEventArgs e)
+        {
+            if (e.Message.Body != null)
+            {
+                Debug.WriteLine(string.Format(">In: {2}\n\tFrom: {0}\n\tBody: {1}\n", e.Message.From, e.Message.Body, e.Message.Type));
+
+                if (e.Message.Body == "kinect")
+                {
+                    xmppClient.Send(new Message
+                    {
+                        To = e.Message.From,
+                        Type = MessageType.Chat,
+                        Body = "valor: " + contador + ""
+                    }
+                    );
+                } else {
+                    xmppClient.Send(new Message
+                    {
+                        To = e.Message.From,
+                        Type = MessageType.Chat,
+                        Body = "ERROR: No entiendo la peticion. Intenta \"kinect\"",
+                        XHtml = new matrixXmpp::XHtmlIM.Html
+                        {
+                            Body = new matrixXmpp.XHtmlIM.Body
+                            {
+                                InnerXHtml = "<p><i>ERROR:</i> <strong>No entiendo la peticion:</strong> Intenta: \"kinect\"</p>"
+                            }
+                        }
+                    }
+                    );
+                }
+            }
+        }
+
         private void WindowClosing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             xmppClient.Close();
@@ -216,12 +227,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             }
         }
 
-        int contador = 0;
-        /// <summary>
-        /// Event handler for Kinect sensor's SkeletonFrameReady event
-        /// </summary>
-        /// <param name="sender">object sending the event</param>
-        /// <param name="e">event arguments</param>
+        
         private void SensorSkeletonFrameReady(object sender, SkeletonFrameReadyEventArgs e)
         {
             Skeleton[] skeletons = new Skeleton[0];
@@ -244,14 +250,6 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                 {
                     contador += 1;
                     if (contador > 59) {
-                        
-                        var msg = new Message
-                        {
-                            Type = MessageType.Chat,
-                            To = "marcelo@xmpp.binarylamp.cl",
-                            Body = "Hola el contador es: " + contador + ""
-                        };
-                        xmppClient.Send(msg);
                         contador = 0;
                     }
                     foreach (Skeleton skel in skeletons)
