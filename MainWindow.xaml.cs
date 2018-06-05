@@ -17,6 +17,41 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
     using Matrix.Xmpp.Client;
     using System;
     using System.Timers;
+    using System.Windows.Media.Media3D;
+
+    public class Angles
+    {
+        public double AngleBetweenTwoVectors(Vector3D vectorA, Vector3D vectorB)
+        {
+            double dotProduct;
+            vectorA.Normalize();
+            vectorB.Normalize();
+            dotProduct = Vector3D.DotProduct(vectorA, vectorB);
+
+            return (double)Math.Acos(dotProduct) / Math.PI * 180;
+        }
+
+        public byte[] GetVector(Skeleton skeleton)
+        {
+            Vector3D ShoulderCenter = new Vector3D(skeleton.Joints[JointType.ShoulderCenter].Position.X, skeleton.Joints[JointType.ShoulderCenter].Position.Y, skeleton.Joints[JointType.ShoulderCenter].Position.Z);
+            Vector3D RightShoulder = new Vector3D(skeleton.Joints[JointType.ShoulderRight].Position.X, skeleton.Joints[JointType.ShoulderRight].Position.Y, skeleton.Joints[JointType.ShoulderRight].Position.Z);
+            Vector3D LeftShoulder = new Vector3D(skeleton.Joints[JointType.ShoulderLeft].Position.X, skeleton.Joints[JointType.ShoulderLeft].Position.Y, skeleton.Joints[JointType.ShoulderLeft].Position.Z);
+            Vector3D RightElbow = new Vector3D(skeleton.Joints[JointType.ElbowRight].Position.X, skeleton.Joints[JointType.ElbowRight].Position.Y, skeleton.Joints[JointType.ElbowRight].Position.Z);
+            Vector3D LeftElbow = new Vector3D(skeleton.Joints[JointType.ElbowLeft].Position.X, skeleton.Joints[JointType.ElbowLeft].Position.Y, skeleton.Joints[JointType.ElbowLeft].Position.Z);
+            Vector3D RightWrist = new Vector3D(skeleton.Joints[JointType.WristRight].Position.X, skeleton.Joints[JointType.WristRight].Position.Y, skeleton.Joints[JointType.WristRight].Position.Z);
+            Vector3D LeftWrist = new Vector3D(skeleton.Joints[JointType.WristLeft].Position.X, skeleton.Joints[JointType.WristLeft].Position.Y, skeleton.Joints[JointType.WristLeft].Position.Z);
+            Vector3D UpVector = new Vector3D(0.0, 1.0, 0.0);
+
+            double AngleRightElbow = AngleBetweenTwoVectors(RightElbow - RightShoulder, RightElbow - RightWrist);
+            double AngleRightShoulder = AngleBetweenTwoVectors(UpVector, RightShoulder - RightElbow);
+            double AngleLeftElbow = AngleBetweenTwoVectors(LeftElbow - LeftShoulder, LeftElbow - LeftWrist);
+            double AngleLeftShoulder = AngleBetweenTwoVectors(UpVector, LeftShoulder - LeftElbow);
+
+
+            byte[] Angles = { Convert.ToByte(AngleRightElbow), Convert.ToByte(AngleRightShoulder), Convert.ToByte(AngleLeftElbow), Convert.ToByte(AngleLeftShoulder) };
+            return Angles;
+        }
+    }
 
     public partial class MainWindow : Window
     {
@@ -67,6 +102,12 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
 
         // Timer
         System.Timers.Timer timer = new System.Timers.Timer();
+
+        /// Contador auxiliar si se paso por ciertos angulos
+        private bool[] aux = new bool[4];
+
+        /// Variable que detecta el giro
+        bool detectTurn = false;
 
         public MainWindow()
         {
@@ -127,7 +168,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             xmppClient.Open();
 
             timer.Enabled = true;
-            timer.Interval = 1000;
+            timer.Interval = 2000;
             timer.Elapsed += new System.Timers.ElapsedEventHandler(timerElapsedTime);
 
 
@@ -181,7 +222,12 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
 
         private void timerElapsedTime(object sender, ElapsedEventArgs e)
         {
-            Debug.WriteLine("Paso un segundo");
+            //Debug.WriteLine("Paso un segundo. Detect turn: " + detectTurn);
+            detectTurn = (aux[0] && aux[1] && aux[2] && aux[3]) ? true : false;
+            if (detectTurn) { Debug.WriteLine("Giro Detectado"); detectTurn = false; }
+            for (int i=0; i<aux.Length; i++) {
+                aux[i] = false;
+            }
         }
 
         private void XmppClient_OnMessage(object sender, MessageEventArgs e)
@@ -196,7 +242,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                     {
                         To = e.Message.From,
                         Type = MessageType.Chat,
-                        Body = "valor: " + contador + ""
+                        Body = "kinect:" + detectTurn
                     }
                     );
                 } else {
@@ -204,7 +250,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                     {
                         To = e.Message.From,
                         Type = MessageType.Chat,
-                        Body = "ERROR: No entiendo la peticion. Intenta \"kinect\"",
+                        Body = "ERROR: Soy un bot tonto. No entiendo la peticion. Intenta escribiendo y mandando \"kinect\"",
                         XHtml = new matrixXmpp::XHtmlIM.Html
                         {
                             Body = new matrixXmpp.XHtmlIM.Body
@@ -255,9 +301,24 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                     foreach (Skeleton skel in skeletons)
                     {
                         RenderClippedEdges(skel, dc);
-
+    
                         if (skel.TrackingState == SkeletonTrackingState.Tracked)
                         {
+
+                            Angles MyAngles = new Angles();
+                            byte[] ReadyAngles = MyAngles.GetVector(skel);
+                            statusBarText.Text = "CodoDerecho: " + ReadyAngles[0].ToString() + "\t HombroDerecho: " + ReadyAngles[1].ToString() + "\t CodoIzq: " + ReadyAngles[2].ToString() + "\t HombroIzq: " + ReadyAngles[3].ToString();
+
+
+                            //######### Inicio: Fill Aux Angles ###########
+                            if (ReadyAngles[0] < 40) { aux[0] = true; }
+                            if (ReadyAngles[0] >= 40 && ReadyAngles[0] < 80) { aux[1] = true; }
+                            if (ReadyAngles[0] >= 80 && ReadyAngles[0] < 120) { aux[2] = true; }
+                            if (ReadyAngles[0] >= 120 && ReadyAngles[0] < 160) { aux[3] = true; }
+
+                            statusBarText.Text += "\t" + aux[0] + " " + aux[1] + " " + aux[2] + " " + aux[3];
+
+                            //######### Fin: Fill Aux Angles ###########
                             this.DrawBonesAndJoints(skel, dc);
                         }
                         else if (skel.TrackingState == SkeletonTrackingState.PositionOnly)
@@ -402,5 +463,6 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                 }
             }
         }
+
     }
 }
