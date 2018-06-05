@@ -160,7 +160,8 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                 // Ingresar credenciales de acceso aquí
                 XmppDomain = "xmpp.binarylamp.cl",
                 Username = "totem",
-                Password = "totem"
+                Password = "totem",
+                Resource = "test"
             };
 
             xmppClient.OnMessage += XmppClient_OnMessage;
@@ -234,17 +235,19 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
         {
             if (e.Message.Body != null)
             {
-                Debug.WriteLine(string.Format(">In: {2}\n\tFrom: {0}\n\tBody: {1}\n", e.Message.From, e.Message.Body, e.Message.Type));
+                Debug.WriteLine(string.Format(">In : {2}\n\tFrom: {0}\n\tBody: {1}", e.Message.From, e.Message.Body, e.Message.Type));
 
                 if (e.Message.Body == "kinect")
                 {
-                    xmppClient.Send(new Message
-                    {
+                    String envioRespuesta = (detectTurn) ? "true" : "false;";
+                    Message mensajeAEnviar = new Message {
                         To = e.Message.From,
                         Type = MessageType.Chat,
-                        Body = "kinect:" + detectTurn
-                    }
-                    );
+                        Body = "kinect:" + envioRespuesta
+                    };
+                    Debug.WriteLine(string.Format(">Out: {2}\n\tFrom: {0}\n\tBody: {1}", mensajeAEnviar.From, mensajeAEnviar.Body, mensajeAEnviar.Type));
+
+                    xmppClient.Send(mensajeAEnviar);
                 } else {
                     xmppClient.Send(new Message
                     {
