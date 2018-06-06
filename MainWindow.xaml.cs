@@ -48,6 +48,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             double AngleLeftShoulder = AngleBetweenTwoVectors(UpVector, LeftShoulder - LeftElbow);
 
 
+
             byte[] Angles = { Convert.ToByte(AngleRightElbow), Convert.ToByte(AngleRightShoulder), Convert.ToByte(AngleLeftElbow), Convert.ToByte(AngleLeftShoulder) };
             return Angles;
         }
@@ -175,7 +176,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             xmppClient.Open();
 
             timer.Enabled = true;
-            timer.Interval = 2000;
+            timer.Interval = 1500;
             timer.Elapsed += new System.Timers.ElapsedEventHandler(timerElapsedTime);
 
 
@@ -221,13 +222,16 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
         }
 
         private void timerElapsedTime(object sender, ElapsedEventArgs e) {
-            //Debug.WriteLine("Paso un segundo. Detect turn: " + detectTurn);
+
             detectTurn = (aux[0] && aux[1] && aux[2] && aux[3]) ? true : false;
-            if (detectTurn) { Debug.WriteLine("Giro Detectado"); detectTurn = false; }
+            if (detectTurn) {
+                Debug.WriteLine("Giro Detectado");
+            }
             for (int i=0; i<aux.Length; i++) {
                 aux[i] = false;
-            }
+            } 
         }
+
 
         private void XmppClient_OnMessage(object sender, MessageEventArgs e)
         {
@@ -235,7 +239,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                 Debug.WriteLine(string.Format(">In : {2}\n\tFrom: {0}\n\tBody: {1}", e.Message.From, e.Message.Body, e.Message.Type));
 
                 if (e.Message.Body == "kinect") {
-                    String envioRespuesta = (detectTurn) ? "true" : "false;";
+                    String envioRespuesta = (detectTurn) ? "true" : "false";
                     Message mensajeAEnviar = new Message {
                         To = e.Message.From,
                         Type = MessageType.Chat,
@@ -294,16 +298,17 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
 
                             Angles MyAngles = new Angles();
                             byte[] ReadyAngles = MyAngles.GetVector(skel);
-                            statusBarText.Text = "CodoDerecho: " + ReadyAngles[0].ToString() + "\t HombroDerecho: " + ReadyAngles[1].ToString() + "\t CodoIzq: " + ReadyAngles[2].ToString() + "\t HombroIzq: " + ReadyAngles[3].ToString();
+                            //statusBarText.Text = "CodoDerecho: " + ReadyAngles[0].ToString() + "   \t\t HombroDerecho: " + ReadyAngles[1].ToString() + "\t\t CodoIzq: " + ReadyAngles[2].ToString() + "\t\t HombroIzq: " + ReadyAngles[3].ToString();
+
 
 
                             //######### Inicio: Fill Aux Angles ###########
-                            if (ReadyAngles[0] < 40) { aux[0] = true; }
-                            if (ReadyAngles[0] >= 40 && ReadyAngles[0] < 80) { aux[1] = true; }
+                            if (ReadyAngles[0] < 50) { aux[0] = true; }
+                            if (ReadyAngles[0] >= 50 && ReadyAngles[0] < 80) { aux[1] = true; }
                             if (ReadyAngles[0] >= 80 && ReadyAngles[0] < 120) { aux[2] = true; }
-                            if (ReadyAngles[0] >= 120 && ReadyAngles[0] < 160) { aux[3] = true; }
+                            if (ReadyAngles[0] >= 120 && ReadyAngles[0] < 140) { aux[3] = true; }
 
-                            statusBarText.Text += "\t" + aux[0] + " " + aux[1] + " " + aux[2] + " " + aux[3];
+                            statusBarText.Text = "\t" + aux[0] + " " + aux[1] + " " + aux[2] + " " + aux[3];
 
                             //######### Fin: Fill Aux Angles ###########
                             this.DrawBonesAndJoints(skel, dc);
