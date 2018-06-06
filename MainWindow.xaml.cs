@@ -100,8 +100,14 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
         /// Counter for help auxiliar
         private int contador = 0;
 
-        // Timer
+        // Timer para detectar giro
         System.Timers.Timer timer = new System.Timers.Timer();
+
+        // Timer para detectar persona frente a la Kinect
+        System.Timers.Timer timerDectecionPersona = new System.Timers.Timer();
+
+        //Identificador de persona frente a la kinect
+        int idTracking = -100;
 
         /// Contador auxiliar si se paso por ciertos angulos
         private bool[] aux = new bool[4];
@@ -187,17 +193,14 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             // This requires that a Kinect is connected at the time of app startup.
             // To make your app robust against plug/unplug, 
             // it is recommended to use KinectSensorChooser provided in Microsoft.Kinect.Toolkit (See components in Toolkit Browser).
-            foreach (var potentialSensor in KinectSensor.KinectSensors)
-            {
-                if (potentialSensor.Status == KinectStatus.Connected)
-                {
+            foreach (var potentialSensor in KinectSensor.KinectSensors) {
+                if (potentialSensor.Status == KinectStatus.Connected) {
                     this.sensor = potentialSensor;
                     break;
                 }
             }
 
-            if (null != this.sensor)
-            {
+            if (null != this.sensor) {
                 // Turn on the skeleton stream to receive skeleton frames
                 this.sensor.SkeletonStream.Enable();
 
@@ -205,24 +208,19 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                 this.sensor.SkeletonFrameReady += this.SensorSkeletonFrameReady;
 
                 // Start the sensor!
-                try
-                {
+                try {
                     this.sensor.Start();
-                }
-                catch (IOException)
-                {
+                } catch (IOException) {
                     this.sensor = null;
                 }
             }
 
-            if (null == this.sensor)
-            {
+            if (null == this.sensor) {
                 this.statusBarText.Text = Properties.Resources.NoKinectReady;
             }
         }
 
-        private void timerElapsedTime(object sender, ElapsedEventArgs e)
-        {
+        private void timerElapsedTime(object sender, ElapsedEventArgs e) {
             //Debug.WriteLine("Paso un segundo. Detect turn: " + detectTurn);
             detectTurn = (aux[0] && aux[1] && aux[2] && aux[3]) ? true : false;
             if (detectTurn) { Debug.WriteLine("Giro Detectado"); detectTurn = false; }
@@ -233,12 +231,10 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
 
         private void XmppClient_OnMessage(object sender, MessageEventArgs e)
         {
-            if (e.Message.Body != null)
-            {
+            if (e.Message.Body != null) {
                 Debug.WriteLine(string.Format(">In : {2}\n\tFrom: {0}\n\tBody: {1}", e.Message.From, e.Message.Body, e.Message.Type));
 
-                if (e.Message.Body == "kinect")
-                {
+                if (e.Message.Body == "kinect") {
                     String envioRespuesta = (detectTurn) ? "true" : "false;";
                     Message mensajeAEnviar = new Message {
                         To = e.Message.From,
@@ -249,64 +245,52 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
 
                     xmppClient.Send(mensajeAEnviar);
                 } else {
-                    xmppClient.Send(new Message
-                    {
+                    xmppClient.Send(new Message {
                         To = e.Message.From,
                         Type = MessageType.Chat,
                         Body = "ERROR: Soy un bot tonto. No entiendo la peticion. Intenta escribiendo y mandando \"kinect\"",
                         XHtml = new matrixXmpp::XHtmlIM.Html
                         {
-                            Body = new matrixXmpp.XHtmlIM.Body
-                            {
+                            Body = new matrixXmpp.XHtmlIM.Body  {
                                 InnerXHtml = "<p><i>ERROR:</i> <strong>No entiendo la peticion:</strong> Intenta: \"kinect\"</p>"
                             }
                         }
-                    }
-                    );
+                    });
                 }
             }
         }
 
-        private void WindowClosing(object sender, System.ComponentModel.CancelEventArgs e)
-        {
+        private void WindowClosing(object sender, System.ComponentModel.CancelEventArgs e) {
             xmppClient.Close();
-            if (null != this.sensor)
-            {
+            if (null != this.sensor) {
                 this.sensor.Stop();
             }
         }
 
         
-        private void SensorSkeletonFrameReady(object sender, SkeletonFrameReadyEventArgs e)
-        {
+        private void SensorSkeletonFrameReady(object sender, SkeletonFrameReadyEventArgs e) { 
             Skeleton[] skeletons = new Skeleton[0];
 
-            using (SkeletonFrame skeletonFrame = e.OpenSkeletonFrame())
-            {
-                if (skeletonFrame != null)
-                {
+            using (SkeletonFrame skeletonFrame = e.OpenSkeletonFrame())  {
+                if (skeletonFrame != null) {
                     skeletons = new Skeleton[skeletonFrame.SkeletonArrayLength];
                     skeletonFrame.CopySkeletonDataTo(skeletons);
                 }
             }
 
-            using (DrawingContext dc = this.drawingGroup.Open())
-            {
+            using (DrawingContext dc = this.drawingGroup.Open()) {
                 // Draw a transparent background to set the render size
                 dc.DrawRectangle(Brushes.Black, null, new Rect(0.0, 0.0, RenderWidth, RenderHeight));
 
-                if (skeletons.Length != 0)
-                {
+                if (skeletons.Length != 0) {
                     contador += 1;
                     if (contador > 59) {
                         contador = 0;
                     }
-                    foreach (Skeleton skel in skeletons)
-                    {
+                    foreach (Skeleton skel in skeletons)  {
                         RenderClippedEdges(skel, dc);
     
-                        if (skel.TrackingState == SkeletonTrackingState.Tracked)
-                        {
+                        if (skel.TrackingState == SkeletonTrackingState.Tracked) {
 
                             Angles MyAngles = new Angles();
                             byte[] ReadyAngles = MyAngles.GetVector(skel);
@@ -324,8 +308,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
                             //######### Fin: Fill Aux Angles ###########
                             this.DrawBonesAndJoints(skel, dc);
                         }
-                        else if (skel.TrackingState == SkeletonTrackingState.PositionOnly)
-                        {
+                        else if (skel.TrackingState == SkeletonTrackingState.PositionOnly) {
                             dc.DrawEllipse(
                             this.centerPointBrush,
                             null,
@@ -346,8 +329,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
         /// </summary>
         /// <param name="skeleton">skeleton to draw</param>
         /// <param name="drawingContext">drawing context to draw to</param>
-        private void DrawBonesAndJoints(Skeleton skeleton, DrawingContext drawingContext)
-        {
+        private void DrawBonesAndJoints(Skeleton skeleton, DrawingContext drawingContext) {
             // Render Torso
             this.DrawBone(skeleton, drawingContext, JointType.Head, JointType.ShoulderCenter);
             this.DrawBone(skeleton, drawingContext, JointType.ShoulderCenter, JointType.ShoulderLeft);
@@ -378,8 +360,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             this.DrawBone(skeleton, drawingContext, JointType.AnkleRight, JointType.FootRight);
  
             // Render Joints
-            foreach (Joint joint in skeleton.Joints)
-            {
+            foreach (Joint joint in skeleton.Joints) {
                 Brush drawBrush = null;
 
                 if (joint.TrackingState == JointTrackingState.Tracked)
@@ -403,8 +384,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
         /// </summary>
         /// <param name="skelpoint">point to map</param>
         /// <returns>mapped point</returns>
-        private Point SkeletonPointToScreen(SkeletonPoint skelpoint)
-        {
+        private Point SkeletonPointToScreen(SkeletonPoint skelpoint) {
             // Convert point to depth space.  
             // We are not using depth directly, but we do want the points in our 640x480 output resolution.
             DepthImagePoint depthPoint = this.sensor.CoordinateMapper.MapSkeletonPointToDepthPoint(skelpoint, DepthImageFormat.Resolution640x480Fps30);
@@ -418,8 +398,7 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
         /// <param name="drawingContext">drawing context to draw to</param>
         /// <param name="jointType0">joint to start drawing from</param>
         /// <param name="jointType1">joint to end drawing at</param>
-        private void DrawBone(Skeleton skeleton, DrawingContext drawingContext, JointType jointType0, JointType jointType1)
-        {
+        private void DrawBone(Skeleton skeleton, DrawingContext drawingContext, JointType jointType0, JointType jointType1) {
             Joint joint0 = skeleton.Joints[jointType0];
             Joint joint1 = skeleton.Joints[jointType1];
 
@@ -432,15 +411,13 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
 
             // Don't draw if both points are inferred
             if (joint0.TrackingState == JointTrackingState.Inferred &&
-                joint1.TrackingState == JointTrackingState.Inferred)
-            {
+                joint1.TrackingState == JointTrackingState.Inferred) {
                 return;
             }
 
             // We assume all drawn bones are inferred unless BOTH joints are tracked
             Pen drawPen = this.inferredBonePen;
-            if (joint0.TrackingState == JointTrackingState.Tracked && joint1.TrackingState == JointTrackingState.Tracked)
-            {
+            if (joint0.TrackingState == JointTrackingState.Tracked && joint1.TrackingState == JointTrackingState.Tracked) {
                 drawPen = this.trackedBonePen;
             }
 
@@ -452,16 +429,12 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
         /// </summary>
         /// <param name="sender">object sending the event</param>
         /// <param name="e">event arguments</param>
-        private void CheckBoxSeatedModeChanged(object sender, RoutedEventArgs e)
-        {
-            if (null != this.sensor)
-            {
-                if (this.checkBoxSeatedMode.IsChecked.GetValueOrDefault())
-                {
+        private void CheckBoxSeatedModeChanged(object sender, RoutedEventArgs e) {
+            if (null != this.sensor) {
+                if (this.checkBoxSeatedMode.IsChecked.GetValueOrDefault()) {
                     this.sensor.SkeletonStream.TrackingMode = SkeletonTrackingMode.Seated;
                 }
-                else
-                {
+                else {
                     this.sensor.SkeletonStream.TrackingMode = SkeletonTrackingMode.Default;
                 }
             }
