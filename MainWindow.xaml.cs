@@ -47,7 +47,10 @@ namespace Microsoft.Samples.Kinect.SkeletonBasics
             double AngleLeftElbow = AngleBetweenTwoVectors(LeftElbow - LeftShoulder, LeftElbow - LeftWrist);
             double AngleLeftShoulder = AngleBetweenTwoVectors(UpVector, LeftShoulder - LeftElbow);
 
-
+            AngleRightElbow = (AngleRightElbow < 0) ? AngleRightElbow * (-1) : AngleRightElbow;
+            AngleRightShoulder = (AngleRightShoulder < 0) ? AngleRightShoulder * (-1) : AngleRightShoulder;
+            AngleLeftElbow = (AngleLeftElbow < 0) ? AngleLeftElbow * (-1) : AngleLeftElbow;
+            AngleLeftShoulder = (AngleLeftShoulder < 0) ? AngleLeftShoulder * (-1) : AngleLeftShoulder;
 
             byte[] Angles = { Convert.ToByte(AngleRightElbow), Convert.ToByte(AngleRightShoulder), Convert.ToByte(AngleLeftElbow), Convert.ToByte(AngleLeftShoulder) };
             return Angles;
